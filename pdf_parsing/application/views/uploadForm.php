@@ -9,12 +9,13 @@
 <body>
 	<div class="container mt-3">
 	<h2>Upload Your PDF Files and extract emails and names found </h2><hr>
+    <strong><?php if(isset($totalFiles)) echo "Successfully uploaded ".count($totalFiles)." files"; ?></strong>
 
 	<?= form_open_multipart('upload/uploadFiles'); ?>
 
 	<div class="row mb-3">
 			<div class="col-md-6">
-			<input type="file" name="usr_files[]" multiple="multiple" />
+			<input type="file" name="files[]" multiple="multiple" />
 			<span class="text-danger"><?php if (isset($error)) { echo $error; } ?></span>
 			</div>
 		</div>
@@ -22,7 +23,6 @@
 		<input type="submit" class="btn btn-primary" name="fileSubmit" value="extract Emails & names"/>
 
 	<?php echo form_close(); ?>
-	<?php if (isset($success_msg)) { echo $success_msg; } ?>
 	</div>
 
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>

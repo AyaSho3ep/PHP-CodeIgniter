@@ -1,82 +1,113 @@
 <?php
 
-defined('BASEPATH') OR exit('No direct script access allowed');
-
-class upload extends CI_Controller {
+defined('BASEPATH') or exit('No direct script access allowed');
+class upload extends CI_Controller
+{
 
 	public function index()
 	{
 		$this->load->view("uploadForm");
 	}
 
-	public function uploadFiles(){
-		$config['upload_path'] = './uploads/';
-		// $config['upload_path'] = base_url() . "uploads/";
-        $config['allowed_types'] = 'pdf';
-        $config['max_size']    = '10240';
+	public function uploadFiles()
+	{
 
-        $this->load->library('upload', $config);
-        
-        $upload_error = array();
-        
-        for($i=0; $i<count($_FILES['usr_files']['name']); $i++)
-        {
-            $_FILES['userfile']['name']= $_FILES['usr_files']['name'][$i];
-            $_FILES['userfile']['type']= $_FILES['usr_files']['type'][$i];
-            $_FILES['userfile']['tmp_name']= $_FILES['usr_files']['tmp_name'][$i];
-            $_FILES['userfile']['error']= $_FILES['usr_files']['error'][$i];
-            $_FILES['userfile']['size']= $_FILES['usr_files']['size'][$i];
-            
-            if (!$this->upload->do_upload('usr_files'))
-            {
-                // fail
-                $upload_error = array('error' => $this->upload->display_errors());
-                $this->load->view('uploadForm', $upload_error);
-                break;
-            }
-        }
-        
-        // success
-        if ($upload_error == NULL)
-        {
-			$upload_data = $this->upload->data();
-			$pdf_path = $upload_data['full_path'];
-	
-			$this->load->library('smalot/pdfParser/parser');
-			$text = $this->parser->parseFile($pdf_path);
-	
-			$emails = $this->extractEmails($text);
+		$data = [];
+		$upload_error = array();
 
-			foreach ($emails as $email) {
-				list($first_name, $last_name) = $this->extractNamesFromEmail($email);
-				
-				echo "Email: " . $email . "<br>";
-				echo "First Name: " . $first_name . "<br>";
-				echo "Last Name: " . $last_name . "<br>";
-				echo "<br>";
+		$count = count($_FILES['files']['name']);
+
+		for ($i = 0; $i < $count; $i++) {
+
+			if (!empty($_FILES['files']['name'][$i])) {
+
+				$_FILES['file']['name'] = $_FILES['files']['name'][$i];
+				$_FILES['file']['type'] = $_FILES['files']['type'][$i];
+				$_FILES['file']['tmp_name'] = $_FILES['files']['tmp_name'][$i];
+				$_FILES['file']['error'] = $_FILES['files']['error'][$i];
+				$_FILES['file']['size'] = $_FILES['files']['size'][$i];
+
+				$config['upload_path'] = 'uploads/';
+				$config['allowed_types'] = 'pdf';
+				$config['max_size'] = '1024';
+				$config['file_name'] = $_FILES['files']['name'][$i];
+
+				$this->load->library('upload', $config);
+
+				if (!$this->upload->do_upload('file')) {
+					$upload_error = array('error' => $this->upload->display_errors());
+					$this->load->view('uploadForm', $upload_error);
+					break;
+				}
+
+				if ($upload_error == NULL && $this->upload->do_upload('file')) {
+					$uploadData = $this->upload->data();
+
+					$filename = $uploadData['file_name'];
+
+					$data['totalFiles'][] = $filename;
+
+					$pdf_path = $uploadData['full_path'];
+
+					$this->load->library('pdfparser');
+
+					$text = $this->pdfparser->parsePdf($pdf_path)->getText();
+					$emails = $this->extractEmails($text);
+
+					echo '
+					<div class= "container my-5 bg-dark text-center">
+
+					<table class="table table-dark">
+					<thead>
+					  <tr>
+						<th scope="col">File Name</th>
+						<th scope="col">Email</th>
+						<th scope="col">First name</th>
+						<th scope="col">Last name</th>
+					  </tr>
+					</thead>
+					<tbody>';
+					foreach ($emails as $email) {
+						list($first_name, $last_name) = $this->extractNamesFromEmail($email);
+						echo '
+						<tr>
+							<td>' . $filename . '</td>
+							<td>' . $email . '</td>
+							<td>' . $first_name . '</td>
+							<td>' . $last_name . '</td>
+						</tr>';
+					}
+					echo '
+						</tbody>
+					  </table></div>
+					';
+				}
 			}
-
-        }
-	}	
-
-	private function extractEmails($text) {
-        $pattern = '/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}/';
-        preg_match_all($pattern, $text, $matches);
-        return $matches[0];
-    }
-
-	private function extractNamesFromEmail($email) {
-
-		$parts = explode('@', $email);
-	
-		if (count($parts) == 2) {
-
-			return array($parts[0], $parts[1]);
-		} else {
-
-			return array($parts[0], null);
 		}
+		$this->load->view('UploadForm');
 	}
 
 
+
+	private function extractEmails($text)
+	{
+		$pattern = '/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}/';
+		preg_match_all($pattern, $text, $matches);
+		return $matches[0];
+	}
+
+	private function extractNamesFromEmail($email)
+	{
+
+		$pattern = '/^(\w+)\.(\w+)@/';
+
+		if (preg_match($pattern, $email, $matches)) {
+			$firstName = ucfirst($matches[1]);
+			$lastName = isset($matches[2]) ? ucfirst($matches[2]) : null;
+
+			return array($firstName, $lastName);
+		} else {
+			return array('error' => 'Invalid email format');
+		}
+	}
 }
